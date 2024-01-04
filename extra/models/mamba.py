@@ -176,7 +176,7 @@ class RMSNorm:
     return (x * (x.pow(2).mean(-1, keepdim=True) + self.eps).rsqrt()) * self.weight
   
 
-def generate(model, tokenizer,prompt: str,n_tokens_to_gen: int = 25, sample: bool = True, top_k: int = 40):
+def generate(model, tokenizer,prompt: str,n_tokens_to_gen: int = 25, sample: bool = False, top_k: int = 40):
  
     input_ids = tokenizer(prompt, return_tensors='np').input_ids
     Tensor.no_grad = True
@@ -188,16 +188,15 @@ def generate(model, tokenizer,prompt: str,n_tokens_to_gen: int = 25, sample: boo
         (batch, vocab_size) = probs.shape
         
         if top_k is not None:
-            start = time.time()
             (values, indices) = topk(probs, k=top_k)
-            print(f"topk took {time.time() - start}")
             probs = Tensor.where(probs < values[:, -1, None], Tensor.zeros_like(probs), probs)
             probs = probs / probs.sum(axis=1, keepdim=True)
             
         if sample:
             next_indices = probs.multinomial(num_samples=1).item()
         else:
-            next_indices = probs.argmax(dim=-1)[:, None]
+            next_indices = probs.argmax(axis=-1)[:, None].item()
+
         next_indices = np.array([[next_indices]])
         input_ids = np.concatenate((input_ids, next_indices), axis=1)
         print(tokenizer.decode(input_ids.tolist()[0]))
